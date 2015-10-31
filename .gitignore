@@ -1,0 +1,13 @@
+*.exe
+ScreenTranslate/Debug/ScreenTranslate.ilk
+*.obj
+ScreenTranslate/Debug/ScreenTranslate.log
+*.pdb
+ScreenTranslate/Debug/ScreenTranslate.tlog/cl.command.1.tlog
+*.tlog
+ScreenTranslate/Debug/vc120.idb
+*.opensdf
+ScreenTranslate/ipch/screentranslate-3a943f5f/screentranslate-c70d2dba.ipch
+*.pch
+ScreenTranslate/Debug/ScreenTranslate.res
+ScreenTranslate/ScreenTranslate.sdf
