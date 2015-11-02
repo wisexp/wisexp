@@ -9,7 +9,6 @@
 #include <gdiplus.h>
 #include <algorithm>
 #include <list>
-#include <fstream>
 
 using namespace std;
 #ifdef _DEBUG
@@ -56,7 +55,6 @@ CScreenTranslateDlg::CScreenTranslateDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CScreenTranslateDlg::IDD, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-    m_lineIt = m_characters.end();
 }
 
 void CScreenTranslateDlg::DoDataExchange(CDataExchange* pDX)
@@ -75,7 +73,6 @@ BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
     ON_WM_TIMER()
     ON_BN_CLICKED(IDC_BUTTON_NEXT, &CScreenTranslateDlg::OnBnClickedButtonNext)
     ON_BN_CLICKED(IDC_BUTTON_CONFIRM, &CScreenTranslateDlg::OnBnClickedButtonConfirm)
-    ON_BN_CLICKED(IDC_BUTTON_SHOW_CHAR, &CScreenTranslateDlg::OnBnClickedButtonShowChar)
 END_MESSAGE_MAP()
 
 
@@ -154,39 +151,6 @@ void CScreenTranslateDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
-
-        if (m_lineIt != m_characters.end())
-        {
-
-            auto pDC = GetDC();
-            pDC->SetStretchBltMode(HALFTONE);
-
-            int shiftx = 0;
-            int shifty = 0;
-            for (auto lineIt = m_characters.begin(); lineIt <= m_lineIt; ++lineIt)
-            {
-                shifty += 24;
-                shiftx = 0;
-                
-                for (auto charIt = lineIt->begin(); ; ++charIt)
-                {
-                    if (lineIt == m_lineIt && charIt >= m_charIt)
-                        break;
-                    if (charIt == lineIt->end())
-                        break;
-                    shiftx += 12;
-                    for (auto& point : *charIt)
-                    {
-                        pDC->SetPixel(point.first + shiftx, m_bottom - point.second + 100 + shifty, 0);
-                    }
-                    wchar_t str[2] = L" ";
-                    str[0] = m_charmap[*charIt];
-                    pDC->TextOut(shiftx, m_bottom + shifty + 100, str, 1);
-                }
-            }
-           
-            ReleaseDC(pDC);
-        }
 	}
 }
 
@@ -576,14 +540,12 @@ void CScreenTranslateDlg::OnBnClickedButton2()
 
                     
                     m_characters.clear();
-                    Line_T line;
-                    int bottomOfLastLine = -1;
-                    int maxHeightOfCharacter = 10;
+                    m_index = -1;
                     // split characters
                     vector<vector<int>> visited(m_bottom - m_top, vector<int>(m_right - m_left, 0));
-                    for (int y = m_top; y < m_bottom; y++)
+                    for (int x = m_left; x < m_right; x++)
                     {
-                        for (int x = m_left; x < m_right; x++)
+                        for (int y = m_top; y < m_bottom; y++)
                         {
                             auto c = m_currentmatrix[y][x];
                             if (visited[y - m_top][x - m_left]) continue;
@@ -591,19 +553,6 @@ void CScreenTranslateDlg::OnBnClickedButton2()
                             visited[y - m_top][x - m_left] = 1;
                             if (c != 0)
                             {
-                                int bottomOfCurrentLine = y;
-                                if (bottomOfLastLine == -1)
-                                {
-                                    bottomOfLastLine = bottomOfCurrentLine;
-                                }
-
-                                if (bottomOfCurrentLine - bottomOfLastLine > maxHeightOfCharacter)
-                                {
-                                    // new line:
-                                    std::sort(line.begin(), line.end());
-                                    m_characters.emplace_back(std::move(line));
-                                    bottomOfLastLine = bottomOfCurrentLine;
-                                }
                                 std::vector<std::pair<int, int>> character;
                                 std::vector<pair<int, int>> stack;
                                 stack.push_back(make_pair(x, y));
@@ -645,66 +594,20 @@ void CScreenTranslateDlg::OnBnClickedButton2()
                                 }
                                 ReleaseDC(pDC);
 
-                                std::sort(character.begin(), character.end());
-                                line.emplace_back(std::move(character));
-                               /* if (!character.empty())
+                                if (!character.empty())
                                 {
                                     auto origin = character[0];
-
-                                    for (auto& point : character)
-                                    {
-                                        if (point.first < origin.first)
-                                            origin.first = point.first;
-                                        if (point.second < origin.second)
-                                            origin.second = point.second;
-                                    }
-
                                     for (auto& point : character)
                                     {
                                         point.first -= origin.first;
                                         point.second -= origin.second;
                                     }
 
-                                    std::sort(character.begin(), character.end());
-                                    line.emplace_back(std::move(character));
-                                }*/
-                            }
-                        }
-                    }
-
-                    if (!line.empty())
-                    {
-                        std::sort(line.begin(), line.end());
-                        m_characters.emplace_back(std::move(line));
-                    }
-
-                    for (auto& l : m_characters)
-                    {
-                        for (auto& character : l)
-                        {
-                            if (!character.empty())
-                            {
-                                auto origin = character[0];
-
-                                for (auto& point : character)
-                                {
-                                    if (point.first < origin.first)
-                                        origin.first = point.first;
-                                    if (point.second < origin.second)
-                                        origin.second = point.second;
-                                }
-
-                                for (auto& point : character)
-                                {
-                                    point.first -= origin.first;
-                                    point.second -= origin.second;
+                                    m_characters.emplace_back(std::move(character));
                                 }
                             }
                         }
                     }
-
-                    m_lineIt = m_characters.begin();
-                    m_charIt = m_lineIt->begin();
                 }
             }
         }
@@ -714,34 +617,33 @@ void CScreenTranslateDlg::OnBnClickedButton2()
 }
 
 
-void CScreenTranslateDlg::OnBnClickedButtonShowChar()
-{
-    // TODO: Add your control notification handler code here
-    wchar_t str[2] = L" ";
-    if (ReadCharacter(*m_charIt, str[0]))
-    {
-
-    }
-    m_char.SetWindowText(str);
-    Invalidate();
-}
 
 
 void CScreenTranslateDlg::OnBnClickedButtonNext()
 {
     // TODO: Add your control notification handler code here
-    
-    m_charIt++;
-    if (m_charIt == m_lineIt->end())
+    m_index++;
+    if (m_index >= 0 && m_index < m_characters.size())
     {
-        m_lineIt++;
-        if (m_lineIt == m_characters.end())
+        auto& character = m_characters[m_index];
+
+        Invalidate();
+        auto pDC = GetDC();
+        pDC->SetStretchBltMode(HALFTONE);
+
+        for (auto point : character)
         {
-            m_lineIt = m_characters.begin();
+            pDC->SetPixel(point.first + 0, m_bottom - point.second + 100, 0);
         }
-        m_charIt = m_lineIt->begin();
+        ReleaseDC(pDC);
+        wchar_t str[2] = L" ";
+        if (ReadCharacter(character, str[0]))
+        {
+            
+        }
+        
+        m_char.SetWindowText(str);
     }
-    OnBnClickedButtonShowChar();
 }
 
 
@@ -750,9 +652,13 @@ void CScreenTranslateDlg::OnBnClickedButtonConfirm()
     // TODO: Add your control notification handler code here
     wchar_t str[100] = L"";
     m_char.GetWindowText(str, 100);
-    if (str[0] != 0 && str[0] != L' ' && !m_charIt->empty())
+    if (str[0] != 0 && str[0] != L' ')
     {
-        SaveCharacter(*m_charIt, str[0]);
+        if (m_index >= 0 && m_index < m_characters.size())
+        {
+            auto& character = m_characters[m_index];
+            SaveCharacter(character, str[0]);
+        }
     }
 }
 
@@ -771,32 +677,6 @@ int CScreenTranslateDlg::Char_Hash::operator()(const Char_T& character)
 
 bool CScreenTranslateDlg::ReadCharacter(std::vector<std::pair<int, int>>& character, wchar_t& c)
 {
-    if (m_charmap.empty())
-    {
-        std::wifstream ifs("out.txt");
-        size_t size;
-        wchar_t dummy;
-        wchar_t ch;
-        do
-        {
-            ifs >> size;
-            if (!ifs.good()) 
-                break;
-            ifs >> dummy;
-            ifs >> ch;
-            std::vector<std::pair<int, int>> points;
-            points.resize(size);
-            for (size_t i = 0; i < size; i++)
-            {
-                ifs >> dummy;
-                ifs >> points[i].first;
-                ifs >> dummy;
-                ifs >> points[i].second;
-            }
-            m_charmap.insert(make_pair(points, ch));
-        } while (ifs.good());
-        ifs.close();
-    }
     auto it = m_charmap.find(character);
     if (it != m_charmap.end())
     {
@@ -809,14 +689,4 @@ bool CScreenTranslateDlg::ReadCharacter(std::vector<std::pair<int, int>>& charac
 void CScreenTranslateDlg::SaveCharacter(std::vector<std::pair<int, int>>& character, wchar_t c)
 {
     m_charmap.insert(make_pair(character, c));
-    std::wofstream ofs("out.txt", std::ofstream::app);
-    ofs << character.size() << L',' << c;
-    for (auto& point : character)
-    {
-        ofs << L',' << point.first << L'-' << point.second;
-    }
-    ofs << L"\r\n";
-    ofs.close();
 }
-
-
