@@ -10,12 +10,15 @@
 #include <algorithm>
 #include <list>
 #include <fstream>
-
+#include "Property.h"
 using namespace std;
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+#include <regex>
+#include <sstream>
+//#define DUMP
 
 // CAboutDlg dialog used for App About
 
@@ -76,6 +79,7 @@ BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON_NEXT, &CScreenTranslateDlg::OnBnClickedButtonNext)
     ON_BN_CLICKED(IDC_BUTTON_CONFIRM, &CScreenTranslateDlg::OnBnClickedButtonConfirm)
     ON_BN_CLICKED(IDC_BUTTON_SHOW_CHAR, &CScreenTranslateDlg::OnBnClickedButtonShowChar)
+    ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -111,6 +115,8 @@ BOOL CScreenTranslateDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+
+    
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -155,6 +161,8 @@ void CScreenTranslateDlg::OnPaint()
 	{
 		CDialogEx::OnPaint();
 
+#ifdef DUMP
+
         if (m_lineIt != m_characters.end())
         {
 
@@ -177,16 +185,17 @@ void CScreenTranslateDlg::OnPaint()
                     shiftx += 12;
                     for (auto& point : *charIt)
                     {
-                        pDC->SetPixel(point.first + shiftx, m_bottom - point.second + 100 + shifty, 0);
+                        pDC->SetPixel(point.first + shiftx, - point.second + 100 + shifty, 0);
                     }
                     wchar_t str[2] = L" ";
                     str[0] = m_charmap[*charIt];
-                    pDC->TextOut(shiftx, m_bottom + shifty + 100, str, 1);
+                    pDC->TextOut(shiftx, shifty + 100, str, 1);
                 }
             }
            
             ReleaseDC(pDC);
         }
+#endif
 	}
 }
 
@@ -231,35 +240,8 @@ void CScreenTranslateDlg::OnBnClickedButtonRefresh()
     EnumWindows(WndEnumProc, (LPARAM)this);
 }
 
-std::vector<unsigned char> ToPixels(HBITMAP BitmapHandle, int &width, int &height)
-{
-    BITMAP Bmp = { 0 };
-    BITMAPINFO Info = { 0 };
-    std::vector<unsigned char> Pixels = std::vector<unsigned char>();
 
-    HDC DC = CreateCompatibleDC(NULL);
-    std::memset(&Info, 0, sizeof(BITMAPINFO)); //not necessary really..
-    HBITMAP OldBitmap = (HBITMAP)SelectObject(DC, BitmapHandle);
-    GetObject(BitmapHandle, sizeof(Bmp), &Bmp);
-
-    Info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    Info.bmiHeader.biWidth = width = Bmp.bmWidth;
-    Info.bmiHeader.biHeight = height = Bmp.bmHeight;
-    Info.bmiHeader.biPlanes = 1;
-    Info.bmiHeader.biBitCount = Bmp.bmBitsPixel;
-    Info.bmiHeader.biCompression = BI_RGB;
-    Info.bmiHeader.biSizeImage = ((width * Bmp.bmBitsPixel + 31) / 32) * 4 * height;
-
-    Pixels.resize(Info.bmiHeader.biSizeImage);
-    GetDIBits(DC, BitmapHandle, 0, height, &Pixels[0], &Info, DIB_RGB_COLORS);
-    SelectObject(DC, OldBitmap);
-
-    height = std::abs(height);
-    DeleteDC(DC);
-    return Pixels;
-}
-
-int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatrix)
+int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& matrix)
 {
     HDC hdcScreen;
     HDC hdcWindow;
@@ -287,8 +269,8 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatri
     GetClientRect(hWnd, &rcClient);
     GetWindowRect(hWnd, &rcWindow);
 
-    //rcClient.m_right = rcClient.m_left + 400;
-    //rcClient.m_bottom = rcClient.m_top + 400;
+    //rcClient.right = rcClient.left + 400;
+    //rcClient.bottom = rcClient.top + 400;
 
     //This is the best stretch mode
     SetStretchBltMode(hdcWindow, HALFTONE);
@@ -296,7 +278,7 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatri
     ////The source DC is the entire screen and the destination DC is the current window (HWND)
     //if (!StretchBlt(hdcWindow,
     //    0, 0,
-    //    rcClient.m_right, rcClient.m_bottom,
+    //    rcClient.right, rcClient.bottom,
     //    hdcScreen,
     //    0, 0,
     //    GetSystemMetrics(SM_CXSCREEN),
@@ -336,7 +318,7 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatri
 
     
 
-    m_currentmatrix.resize(bmpScreen.bmHeight, std::vector<COLORREF>(bmpScreen.bmWidth));
+    matrix.resize(bmpScreen.bmHeight, std::vector<COLORREF>(bmpScreen.bmWidth));
 
     BITMAPFILEHEADER   bmfHeader;
     BITMAPINFOHEADER   bi;
@@ -401,17 +383,17 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatri
         for (int h = 0; h < bmpScreen.bmHeight; h++)
         {
             char* buf = lpbitmap + h * bmpScreen.bmWidth + w;
-            union MyUnion
-            {
-                char buf[4];
-                DWORD dw;
-            };
-            MyUnion my;
-            my.buf[3] = buf[3];
-            my.buf[2] = buf[0];
-            my.buf[1] = buf[1];
-            my.buf[0] = buf[2];
-            m_currentmatrix[h][w] =  reinterpret_cast<DWORD*>(lpbitmap)[h * bmpScreen.bmWidth + w];
+            //union MyUnion
+            //{
+            //    char buf[4];
+            //    DWORD dw;
+            //};
+            //MyUnion my;
+            //my.buf[3] = buf[3];
+            //my.buf[2] = buf[0];
+            //my.buf[1] = buf[1];
+            //my.buf[0] = buf[2];
+            matrix[h][w] = reinterpret_cast<DWORD*>(lpbitmap)[h * bmpScreen.bmWidth + w];
         }
     }
 
@@ -422,10 +404,6 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& m_currentmatri
     //Close the handle for the file that was created
     //CloseHandle(hFile);
 
-   
-
-    
-
     //Clean up
 done:
     DeleteObject(hbmScreen);
@@ -434,6 +412,291 @@ done:
     ReleaseDC(hWnd, hdcWindow);
 
     return 0;
+}
+
+int GetDelta(const MATRIX& baseline, const MATRIX& current, MATRIX& diff)
+{
+    size_t width = current[0].size();
+    size_t height = current.size();
+    diff.resize(height, vector<COLORREF>(width, 0));
+    int delta = 0;
+
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            auto c1 = baseline[y][x];
+            auto c2 = current[y][x];
+            if (c1 != c2)
+            {
+                delta++;
+                diff[y][x] = c2;
+            }
+            else
+            {
+                diff[y][x] = 0;
+            }
+        }
+    }
+    return delta;
+}
+
+void GetDifference(MATRIX& diff, int& left, int& right, int& top, int& bottom)
+{
+    size_t width = diff[0].size();
+    size_t height = diff.size();
+    std::vector<int> rows(height, 0);
+    std::vector<int> cols(width, 0);
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            if (diff[y][x] != 0)
+            {
+                rows[y]++;
+                cols[x]++;
+            }
+        }
+    }
+
+    int rowMax = *std::max_element(rows.begin(), rows.end());
+    int colMax = *std::max_element(cols.begin(), cols.end());
+    int rowAverage = rowMax / 2;
+    int colAverage = colMax / 2;
+
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            if (diff[y][x] != 0 && (rows[y] < rowAverage || cols[x] < colAverage))
+            {
+                diff[y][x] = 0;
+            }
+        }
+    }
+
+    for (int& r : rows)
+        r = 0;
+    for (int& c : cols)
+        c = 0;
+
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            if (diff[y][x] != 0)
+            {
+                rows[y]++;
+                cols[x]++;
+            }
+        }
+    }
+
+    auto firstRow = std::find_if(rows.begin(), rows.end(), [](int v)
+    {
+        return v > 0;
+    });
+
+    auto lastRow = std::find_if(firstRow, rows.end(), [](int v)
+    {
+        return v == 0;
+    });
+
+    auto firstCol = std::find_if(cols.begin(), cols.end(), [](int v)
+    {
+        return v > 0;
+    });
+
+    auto lastCol = std::find_if(firstCol, cols.end(), [](int v)
+    {
+        return v == 0;
+    });
+
+    left = std::distance(cols.begin(), firstCol);
+    right = std::distance(cols.begin(), lastCol);
+    top = std::distance(rows.begin(), firstRow);
+    bottom = std::distance(rows.begin(), lastRow);
+}
+
+void RemoveNoise(const MATRIX& current, MATRIX& diff, int left, int right, int top, int bottom)
+{
+    for (int x = left; x < right; x++)
+    {
+        for (int y = top; y < bottom; y++)
+        {
+            auto c = current[y][x];
+            if (c != 0)
+            {
+                c &= 0x00ffffff;
+                auto r = (c & 0xff0000) >> 16;
+                auto g = (c & 0xff00) >> 8;
+                auto b = c & 0xff;
+
+                if (r + g + b > 200)
+                    ;// pDC->SetPixel(x + 0, bottom - y + 100, 0);
+                else
+                    c = 0;
+
+                diff[y][x] = c;
+            }
+        }
+    }
+}
+
+void Split(MATRIX& diff, int left, int right, int top, int bottom, std::vector<Line_T>& characters)
+{
+    characters.clear();
+    Line_T line;
+    int bottomOfLastLine = -1;
+    int maxHeightOfCharacter = 10;
+    // split characters
+    vector<vector<int>> visited(bottom - top, vector<int>(right - left, 0));
+    for (int y = top; y < bottom; y++)
+    {
+        for (int x = left; x < right; x++)
+        {
+            auto c = diff[y][x];
+            if (visited[y - top][x - left]) continue;
+
+            visited[y - top][x - left] = 1;
+            if (c != 0)
+            {
+                int bottomOfCurrentLine = y;
+                if (bottomOfLastLine == -1)
+                {
+                    bottomOfLastLine = bottomOfCurrentLine;
+                }
+
+                if (bottomOfCurrentLine - bottomOfLastLine > maxHeightOfCharacter)
+                {
+                    // new line:
+                    std::sort(line.begin(), line.end());
+                    characters.emplace_back(std::move(line));
+                    bottomOfLastLine = bottomOfCurrentLine;
+                }
+                std::vector<std::pair<int, int>> character;
+                std::vector<pair<int, int>> stack;
+                stack.push_back(make_pair(x, y));
+                while (!stack.empty())
+                {
+                    auto point = *stack.rbegin();
+                    stack.pop_back();
+                    character.push_back(point);
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        for (int j = -3; j <= 3; j++)
+                        {
+                            if (i == 0 && j == 0) continue;
+                            if (i != 0 && j != 0) continue;
+                            if (point.first + i < left || point.first + i >= right) continue;
+                            if (point.second + j < top || point.second + j >= bottom) continue;
+                            int xx = point.first - left + i;
+                            int yy = point.second - top + j;
+
+                            if (!visited[yy][xx])
+                            {
+                                visited[yy][xx] = 1;
+                                auto cc = diff[point.second + j][point.first + i];
+                                if (cc != 0)
+                                {
+                                    stack.push_back(make_pair(point.first + i, point.second + j));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (character.size() < 100)
+                {
+                    std::sort(character.begin(), character.end());
+                    line.emplace_back(std::move(character));
+                }
+            }
+        }
+    }
+
+    if (!line.empty())
+    {
+        std::sort(line.begin(), line.end());
+        characters.emplace_back(std::move(line));
+    }
+
+    for (auto& l : characters)
+    {
+        for (auto& character : l)
+        {
+            if (!character.empty())
+            {
+                auto origin = character[0];
+
+                for (auto& point : character)
+                {
+                    if (point.first < origin.first)
+                        origin.first = point.first;
+                    if (point.second < origin.second)
+                        origin.second = point.second;
+                }
+
+                for (auto& point : character)
+                {
+                    point.first -= origin.first;
+                    point.second -= origin.second;
+                }
+            }
+        }
+    }
+}
+
+std::vector<std::wstring> CScreenTranslateDlg::Parse(const MATRIX& baseline, const MATRIX& current)
+{
+    vector<wstring> results;
+
+    MATRIX diff;
+    auto delta = GetDelta(baseline, current, diff);
+    size_t width = current[0].size();
+    size_t height = current.size();
+
+    if (delta > 10000)
+    {
+        int left, right, top, bottom;
+        GetDifference(diff, left, right, top, bottom);
+
+        // remove noise
+        if (left < right && top < bottom)
+        {
+            RemoveNoise(current, diff, left, right, top, bottom);
+
+            std::vector<Line_T> characters;
+            Split(diff, left, right, top, bottom, characters);
+            m_characters.swap(characters);
+#ifdef DUMP
+            m_lineIt = m_characters.begin();
+            m_charIt = m_lineIt->begin();
+#endif
+
+            
+            for (auto& l : m_characters)
+            {
+                wstring line;
+                for (auto& ch : l)
+                {
+                    wchar_t c;
+                    if (ReadCharacter(ch, c))
+                    {
+                        if (c != L' ')
+                            line.push_back(c);
+                    }
+                    else
+                    {
+                        //SaveCharacter(ch, ' ');
+                    }
+                        
+                }
+                results.push_back(line);
+            }
+        }
+    }
+    return results;
 }
 
 
@@ -446,270 +709,66 @@ void CScreenTranslateDlg::OnBnClickedButton2()
     if (curSel != -1)
     {
         HWND hwnd = reinterpret_cast<HWND>(m_programs.GetItemData(curSel));
-        m_lastmatrix.swap(m_currentmatrix);
-        CaptureAnImage(hwnd, m_currentmatrix);
-
-        if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
-        {
-            size_t m_width = m_lastmatrix[0].size();;
-            size_t m_height = m_lastmatrix.size();
-            m_diff.resize(m_height, vector<COLORREF>(m_width, 0));
-            int delta = 0;
-            
-            for (int x = 0; x < m_width; x++)
-            {
-                for (int y = 0; y < m_height; y++)
-                {
-                    auto c1 = m_lastmatrix[y][x];
-                    auto c2 = m_currentmatrix[y][x];
-                    if (c1 != c2)
-                    {
-                        delta++;
-                        m_diff[y][x] = c2;
-                    }
-                    else
-                    {
-                        m_diff[y][x] = 0;
-                    }
-                }
-            }
-            if (delta > 100 * 100)
-            {
-
-                std::vector<int> rows(m_height, 0);
-                std::vector<int> cols(m_width, 0);
-                for (int x = 0; x < m_width; x++)
-                {
-                    for (int y = 0; y < m_height; y++)
-                    {
-                        if (m_diff[y][x] != 0)
-                        {
-                            rows[y]++;
-                            cols[x]++;
-                        }
-                    }
-                }
-
-                int rowMax = *std::max_element(rows.begin(), rows.end());
-                int colMax = *std::max_element(cols.begin(), cols.end());
-                int rowAverage = rowMax / 2;
-                int colAverage = colMax / 2;
-
-
-                for (int x = 0; x < m_width; x++)
-                {
-                    for (int y = 0; y < m_height; y++)
-                    {
-                        if (m_diff[y][x] != 0 && (rows[y] < rowAverage || cols[x] < colAverage))
-                        {
-                            m_diff[y][x] = 0;
-                        }
-                    }
-                }
-
-                for (int& r : rows) 
-                    r = 0;
-                for (int& c : cols) 
-                    c = 0;
-
-                for (int x = 0; x < m_width; x++)
-                {
-                    for (int y = 0; y < m_height; y++)
-                    {
-                        if (m_diff[y][x] != 0)
-                        {
-                            rows[y]++;
-                            cols[x]++;
-                        }
-                    }
-                }
-
-                auto firstRow = std::find_if(rows.begin(), rows.end(), [](int v)
-                {
-                    return v > 0;
-                });
-
-                auto lastRow = std::find_if(firstRow, rows.end(), [](int v)
-                {
-                    return v == 0;
-                });
-
-                auto firstCol = std::find_if(cols.begin(), cols.end(), [](int v)
-                {
-                    return v > 0;
-                });
-
-                auto lastCol = std::find_if(firstCol, cols.end(), [](int v)
-                {
-                    return v == 0;
-                });
-                
-                if (firstRow != lastRow && firstCol != lastCol)
-                {
-                    int m_left = std::distance(cols.begin(), firstCol);
-                    int m_right = std::distance(cols.begin(), lastCol);
-                    int m_top = std::distance(rows.begin(), firstRow);
-                    int m_bottom = std::distance(rows.begin(), lastRow);
-                    auto pDC = GetDC();
-                    pDC->SetStretchBltMode(HALFTONE);
-
-                    for (int x = m_left; x < m_right; x++)
-                    {
-                        for (int y = m_top; y < m_bottom; y++)
-                        {
-                            auto& c = m_currentmatrix[y][x];
-                            if (c != 0)
-                            {
-                                c &= 0x00ffffff;
-                                auto r = (c & 0xff0000) >> 16;
-                                auto g = (c & 0xff00) >> 8;
-                                auto b = c & 0xff;
-
-                                if (r + g + b > 200)
-                                    ;// pDC->SetPixel(x + 0, m_bottom - y + 100, 0);
-                                else
-                                    c = 0;
-                            }
-                        }
-                    }
-                    ReleaseDC(pDC);
-
-                    
-                    m_characters.clear();
-                    Line_T line;
-                    int bottomOfLastLine = -1;
-                    int maxHeightOfCharacter = 10;
-                    // split characters
-                    vector<vector<int>> visited(m_bottom - m_top, vector<int>(m_right - m_left, 0));
-                    for (int y = m_top; y < m_bottom; y++)
-                    {
-                        for (int x = m_left; x < m_right; x++)
-                        {
-                            auto c = m_currentmatrix[y][x];
-                            if (visited[y - m_top][x - m_left]) continue;
-
-                            visited[y - m_top][x - m_left] = 1;
-                            if (c != 0)
-                            {
-                                int bottomOfCurrentLine = y;
-                                if (bottomOfLastLine == -1)
-                                {
-                                    bottomOfLastLine = bottomOfCurrentLine;
-                                }
-
-                                if (bottomOfCurrentLine - bottomOfLastLine > maxHeightOfCharacter)
-                                {
-                                    // new line:
-                                    std::sort(line.begin(), line.end());
-                                    m_characters.emplace_back(std::move(line));
-                                    bottomOfLastLine = bottomOfCurrentLine;
-                                }
-                                std::vector<std::pair<int, int>> character;
-                                std::vector<pair<int, int>> stack;
-                                stack.push_back(make_pair(x, y));
-                                while (!stack.empty())
-                                {
-                                    auto point = *stack.rbegin();
-                                    stack.pop_back();
-                                    character.push_back(point);
-                                    for (int i = -1; i <= 1; i++)
-                                    {
-                                        for (int j = -3; j <= 3; j++)
-                                        {
-                                            if (i == 0 && j == 0) continue;
-                                            if (i != 0 && j != 0) continue;
-                                            if (point.first + i < m_left || point.first + i >= m_right) continue;
-                                            if (point.second + j < m_top || point.second + j >= m_bottom) continue;
-                                            int xx = point.first - m_left + i;
-                                            int yy = point.second - m_top + j;
-                                            
-                                            if (!visited[yy][xx])
-                                            {
-                                                visited[yy][xx] = 1;
-                                                auto cc = m_currentmatrix[point.second + j][point.first + i];
-                                                if (cc != 0)
-                                                {
-                                                    stack.push_back(make_pair(point.first + i, point.second + j));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                auto pDC = GetDC();
-                                pDC->SetStretchBltMode(HALFTONE);
-
-                                for (auto point : character)
-                                {
-                                    pDC->SetPixel(point.first + 0, m_bottom - point.second + 100, 0);
-                                }
-                                ReleaseDC(pDC);
-
-                                std::sort(character.begin(), character.end());
-                                line.emplace_back(std::move(character));
-                               /* if (!character.empty())
-                                {
-                                    auto origin = character[0];
-
-                                    for (auto& point : character)
-                                    {
-                                        if (point.first < origin.first)
-                                            origin.first = point.first;
-                                        if (point.second < origin.second)
-                                            origin.second = point.second;
-                                    }
-
-                                    for (auto& point : character)
-                                    {
-                                        point.first -= origin.first;
-                                        point.second -= origin.second;
-                                    }
-
-                                    std::sort(character.begin(), character.end());
-                                    line.emplace_back(std::move(character));
-                                }*/
-                            }
-                        }
-                    }
-
-                    if (!line.empty())
-                    {
-                        std::sort(line.begin(), line.end());
-                        m_characters.emplace_back(std::move(line));
-                    }
-
-                    for (auto& l : m_characters)
-                    {
-                        for (auto& character : l)
-                        {
-                            if (!character.empty())
-                            {
-                                auto origin = character[0];
-
-                                for (auto& point : character)
-                                {
-                                    if (point.first < origin.first)
-                                        origin.first = point.first;
-                                    if (point.second < origin.second)
-                                        origin.second = point.second;
-                                }
-
-                                for (auto& point : character)
-                                {
-                                    point.first -= origin.first;
-                                    point.second -= origin.second;
-                                }
-                            }
-                        }
-                    }
-
-                    m_lineIt = m_characters.begin();
-                    m_charIt = m_lineIt->begin();
-                }
-            }
-        }
-
         
+        CaptureAnImage(hwnd, m_lastmatrix);
+
+        KillTimer(0);
+        SetTimer(0, 1000, nullptr);
+
+      /*  if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
+        {
+            auto& baseline = m_lastmatrix;
+            auto& current = m_currentmatrix;
+            auto result = Parse(baseline, current);
+
+
+            Property prop;
+            prop.Parse(result);
+
+            int k = 0;
+
+            m_lastmatrix.clear();
+            m_currentmatrix.clear();
+        }*/
+        
+    }
+}
+
+
+
+void CScreenTranslateDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    // TODO: Add your message handler code here and/or call default
+
+    CDialogEx::OnTimer(nIDEvent);
+
+    if (nIDEvent == 0)
+    {
+        int curSel = m_programs.GetCurSel();
+        if (curSel != -1)
+        {
+            HWND hwnd = reinterpret_cast<HWND>(m_programs.GetItemData(curSel));
+
+            CaptureAnImage(hwnd, m_currentmatrix);
+
+            if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
+            {
+                auto& baseline = m_lastmatrix;
+                auto& current = m_currentmatrix;
+                auto result = Parse(baseline, current);
+
+                if (m_lastParsedText != result)
+                {
+                    m_lastParsedText = result;
+                    Property prop;
+                    prop.Parse(result);
+
+                    int k = 0;
+
+                }
+            }
+
+        }
     }
 }
 
@@ -717,13 +776,33 @@ void CScreenTranslateDlg::OnBnClickedButton2()
 void CScreenTranslateDlg::OnBnClickedButtonShowChar()
 {
     // TODO: Add your control notification handler code here
-    wchar_t str[2] = L" ";
-    if (ReadCharacter(*m_charIt, str[0]))
-    {
 
+    LoadCharMap();
+    std::multimap<wchar_t, std::unordered_map<Char_T, wchar_t, Char_Hash>::iterator> reverseMap;
+    for (auto it = m_charmap.begin(); it != m_charmap.end(); ++it)
+    {
+        reverseMap.insert(std::make_pair(it->second, it));
     }
-    m_char.SetWindowText(str);
-    Invalidate();
+
+    auto pDC = GetDC();
+    pDC->SetStretchBltMode(HALFTONE);
+
+    int shiftx = 0;
+    int shifty = 0;
+    for (auto& it : reverseMap)
+    {
+            shiftx += 12;
+            for (auto& point : it.second->first)
+            {
+                pDC->SetPixel(point.first + shiftx, -point.second + 100 + shifty, 0);
+            }
+            wchar_t str[2] = L" ";
+            str[0] = it.first;
+            pDC->TextOut(shiftx, shifty + 110, str, 1);
+        
+    }
+
+    ReleaseDC(pDC);
 }
 
 
@@ -759,43 +838,44 @@ void CScreenTranslateDlg::OnBnClickedButtonConfirm()
 
 int CScreenTranslateDlg::Char_Hash::operator()(const Char_T& character)
 {
-    short x = 0;
-    short y = 0;
-    for (auto& point : character)
+    return character.size();
+}
+
+void CScreenTranslateDlg::LoadCharMap()
+{
+    m_charmap.clear();
+    std::wifstream ifs("out.txt");
+    size_t size;
+    wchar_t dummy;
+    wchar_t ch;
+    ifs >> std::noskipws;
+    do
     {
-        x += point.first;
-        y += point.second;
-    }
-    return (x << 16) + y;
+        ifs >> size;
+        if (!ifs.good())
+            break;
+        ifs >> dummy;
+        ifs >> ch;
+        std::vector<std::pair<int, int>> points;
+        points.resize(size);
+        for (size_t i = 0; i < size; i++)
+        {
+            ifs >> dummy;
+            ifs >> points[i].first;
+            ifs >> dummy;
+            ifs >> points[i].second;
+        }
+        ifs >> dummy;
+        m_charmap.insert(make_pair(points, ch));
+    } while (ifs.good());
+    ifs.close();
 }
 
 bool CScreenTranslateDlg::ReadCharacter(std::vector<std::pair<int, int>>& character, wchar_t& c)
 {
     if (m_charmap.empty())
     {
-        std::wifstream ifs("out.txt");
-        size_t size;
-        wchar_t dummy;
-        wchar_t ch;
-        do
-        {
-            ifs >> size;
-            if (!ifs.good()) 
-                break;
-            ifs >> dummy;
-            ifs >> ch;
-            std::vector<std::pair<int, int>> points;
-            points.resize(size);
-            for (size_t i = 0; i < size; i++)
-            {
-                ifs >> dummy;
-                ifs >> points[i].first;
-                ifs >> dummy;
-                ifs >> points[i].second;
-            }
-            m_charmap.insert(make_pair(points, ch));
-        } while (ifs.good());
-        ifs.close();
+        LoadCharMap();
     }
     auto it = m_charmap.find(character);
     if (it != m_charmap.end())
@@ -815,8 +895,12 @@ void CScreenTranslateDlg::SaveCharacter(std::vector<std::pair<int, int>>& charac
     {
         ofs << L',' << point.first << L'-' << point.second;
     }
-    ofs << L"\r\n";
+    ofs << L"\n";
     ofs.close();
 }
+
+
+
+
 
 

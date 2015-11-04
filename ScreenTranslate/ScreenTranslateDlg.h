@@ -7,6 +7,11 @@
 #include <vector>
 #include <unordered_map>
 
+
+typedef std::vector<std::vector<COLORREF>> MATRIX;
+typedef std::vector<std::pair<int, int>> Char_T;
+typedef std::vector<Char_T> Line_T;
+
 // CScreenTranslateDlg dialog
 class CScreenTranslateDlg : public CDialogEx
 {
@@ -36,19 +41,21 @@ public:
     afx_msg void OnBnClickedButtonRefresh();
     afx_msg void OnBnClickedButton2();
 
+    
     bool ReadCharacter(std::vector<std::pair<int, int>>& character, wchar_t& c);
     void SaveCharacter(std::vector<std::pair<int, int>>& character, wchar_t c);
-
-    std::vector<std::vector<COLORREF>> m_lastmatrix;
-    std::vector<std::vector<COLORREF>> m_currentmatrix;
-    std::vector<std::vector<COLORREF>> m_diff;
-    typedef std::vector<std::pair<int, int>> Char_T;
-    typedef std::vector<Char_T> Line_T;
+    void LoadCharMap();
+    std::vector<std::wstring> Parse(const MATRIX& baseline, const MATRIX& current);
+    
+    MATRIX m_lastmatrix;
+    MATRIX m_currentmatrix;
+    MATRIX m_diff;
     std::vector<Line_T> m_characters;
     std::vector<Line_T>::iterator m_lineIt;
     Line_T::iterator m_charIt;
-    size_t m_width;
-    size_t m_height;
+    std::vector<std::wstring> m_lastParsedText;
+    //size_t m_width;
+    //size_t m_height;
     int m_left, m_right, m_top, m_bottom;
     afx_msg void OnBnClickedButtonNext();
     afx_msg void OnBnClickedButtonConfirm();
@@ -60,4 +67,6 @@ public:
     
     CEdit m_char;
     afx_msg void OnBnClickedButtonShowChar();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
 };
+
