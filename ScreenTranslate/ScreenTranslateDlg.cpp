@@ -1027,11 +1027,15 @@ void CScreenTranslateDlg::SaveCharacter(std::vector<std::pair<int, int>>& charac
 void CScreenTranslateDlg::NSleep(DWORD t)
 {
     
+    Sleep(t);
+    return;
+
     HANDLE h[1];
     h[0] = m_hWnd;
-    auto ret = MsgWaitForMultipleObjects(1, h, true, t, QS_ALLEVENTS);
 
-    if (ret == WAIT_OBJECT_0 + 1)
+    auto ret = MsgWaitForMultipleObjects(0, nullptr, true, t, QS_ALLEVENTS);
+
+    if (ret == WAIT_OBJECT_0)
     {
         MSG msg;
         while (::PeekMessage(&msg, m_hWnd, 0, 0, PM_REMOVE))
@@ -1055,7 +1059,20 @@ void CScreenTranslateDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
     CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void Statics_SpellWeaver_Amulet(const Property& prop)
+void DumpStatics(Property& prop, char* filename)
+{
+    std::wofstream ofs(filename);
+    TRACE(L"================== BEST PROPERTY ==================\r\n");
+    for (auto it : prop.m_properties)
+    {
+        ofs << it.first << L":\t" << it.second.second << std::endl;
+        TRACE(L"BEST PROPERTY: %s: %d\r\n", it.first.c_str(), it.second.second);
+    }
+    TRACE(L"================== BEST PROPERTY ==================\r\n");
+    ofs.close();
+}
+
+void Statics_SpellWeaver_Amulet(Property& prop)
 {
     static Property sp;
     auto it = sp.m_properties.begin();
@@ -1072,12 +1089,7 @@ void Statics_SpellWeaver_Amulet(const Property& prop)
 
     if (updated)
     {
-        TRACE(L"================== BEST PROPERTY ==================\r\n");
-        for (auto it : sp.m_properties)
-        {
-            TRACE(L"BEST PROPERTY: %s: %d\r\n", it.first.c_str(), it.second.second);
-        }
-        TRACE(L"================== BEST PROPERTY ==================\r\n");
+        DumpStatics(sp, "Statics_SpellWeaver_Amulet.txt");
     }
 }
 

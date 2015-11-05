@@ -39,7 +39,7 @@ struct Property
             DECLAR_PROPERTY(HitPoints, L"H1TPO1NTS:\\+(\\d+)")
             DECLAR_PROPERTY(Mana, L"MANA:\\+(\\d+)")
             DECLAR_PROPERTY(MeteorCluster, L"\\+(\\d+)TOMETEORCLUSTERSPELL")
-            DECLAR_PROPERTY(Spell, L"SPELLSARE1NCREASED(\\d+)LEVEL")
+            DECLAR_PROPERTY(Spell, L"SPELLSARE1NCREASED(\\d+)LEVELS?")
     }
 
     void Parse(const std::vector<std::wstring>& lines)
