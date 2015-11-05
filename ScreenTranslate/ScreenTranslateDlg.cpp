@@ -1059,7 +1059,29 @@ void CScreenTranslateDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
     CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void DumpStatics(Property& prop, char* filename)
+void ReadStatics(Property& prop, const std::string& filename)
+{
+    std::wifstream ifs(filename);
+    do
+    {
+        wchar_t buf[80] = { 0 };
+        ifs.getline(buf, 80, L':');
+        if (!ifs.good())
+            break;
+        int value = 0;
+        ifs >> value;
+        wstring key = buf[0] == L'\n' ? buf + 1 : buf;
+        auto it = prop.m_properties.find(key);
+        if (it != prop.m_properties.end())
+            it->second.second = value;
+        else
+        {
+            assert(false);
+        }
+    } while (ifs.good());
+    ifs.close();
+}
+void DumpStatics(Property& prop, const std::string& filename)
 {
     std::wofstream ofs(filename);
     TRACE(L"================== BEST PROPERTY ==================\r\n");
@@ -1072,9 +1094,20 @@ void DumpStatics(Property& prop, char* filename)
     ofs.close();
 }
 
-void Statics_SpellWeaver_Amulet(Property& prop)
+void Statics(char* name, Property& prop)
 {
     static Property sp;
+    static bool initialized = false;
+    std::string file("Statics_");
+    file.append(name);
+    file.append(".txt");
+
+    if (!initialized)
+    {
+        ReadStatics(sp, file);
+        initialized = true;
+    }
+
     auto it = sp.m_properties.begin();
     auto cit = prop.m_properties.begin();
     bool updated = false;
@@ -1089,7 +1122,7 @@ void Statics_SpellWeaver_Amulet(Property& prop)
 
     if (updated)
     {
-        DumpStatics(sp, "Statics_SpellWeaver_Amulet.txt");
+        DumpStatics(sp, file);
     }
 }
 
@@ -1105,15 +1138,126 @@ bool IsAddingMaximumMagic(Property& prop)
     return false;
 }
 
+bool IsGoodSpellWeaverAmulet(Property& prop)
+{
+    static int bestScore = 20;
+    int score = 0;
+    if (prop.m_properties[L"MeteorCluster"].second < 3) return false;
 
+    auto v1 = prop.m_properties[L"AllAttributes"].second;
+    if (v1 > 15) score += v1 - 15;
+    auto v2 = prop.m_properties[L"Spell"].second;
+    score += v2 * 20;
+    auto v3 = prop.m_properties[L"Magic"].second;
+    if (v3 > 50) score += v3 - 50;
+    auto v4 = prop.m_properties[L"Mana"].second;
+    if (v4 > 60) score += v4 - 60;
+    auto v5 = prop.m_properties[L"ResistAll"].second;
+    if (v5 > 20) score += v5 - 20;
+
+    bool isGood = false;
+    if (score > bestScore * 9 / 10)
+    {
+        isGood = true;
+    }
+
+    if (score > bestScore)
+    {
+        bestScore = score;
+    }
+
+    return isGood;
+    
+}
+bool IsGoodSpellWeaverRing(Property& prop)
+{
+    static int bestScore = 10;
+    static int bestMagicForGolem = 50;
+    int score = 0;
+    if (prop.m_properties[L"Golem"].second == 3)
+    {
+        auto magic = prop.m_properties[L"Magic"].second;
+        if (magic > bestMagicForGolem)
+        {
+            bestMagicForGolem = magic;
+            return true;
+        }
+        return false;
+    }
+
+    if (prop.m_properties[L"MeteorCluster"].second < 3)
+        return false;
+
+    auto v1 = prop.m_properties[L"AllAttributes"].second;
+    if (v1 > 15) score += (v1 - 15) * 2;
+    auto v3 = prop.m_properties[L"Magic"].second;
+    if (v3 > 50) score += v3 - 50;
+    auto v4 = prop.m_properties[L"Mana"].second;
+    if (v4 > 80) score += v4 - 80;
+    auto v5 = prop.m_properties[L"ResistAll"].second;
+    if (v5 > 30) score += (v5 - 30) * 2;
+
+    bool isGood = false;
+    if (score > bestScore * 9 / 10)
+    {
+        isGood = true;
+    }
+
+    if (score > bestScore)
+    {
+        bestScore = score;
+    }
+
+    return isGood;
+
+}
+bool IsGoodFanaticRing(Property& prop)
+{
+    static int bestScore = 10;
+    int score = 0;
+
+    if (prop.m_properties[L"MaxResistAll"].second < 3)
+        return false;
+
+    auto v1 = prop.m_properties[L"AllAttributes"].second;
+    if (v1 > 15) score += (v1 - 15) * 2;
+    auto v3 = prop.m_properties[L"Dexterity"].second;
+    if (v3 > 50) score += v3 - 50;
+    auto v4 = prop.m_properties[L"Strength"].second;
+    if (v4 > 20) score += v4 - 20;
+    auto v5 = prop.m_properties[L"ResistAll"].second;
+    if (v5 > 30) score += (v5 - 30) * 2;
+    auto v6 = prop.m_properties[L"StealMana"].second;
+    if (v6 > 4) score += (v6 - 4) * 10;
+
+    bool isGood = false;
+    if (score > bestScore * 9 / 10)
+    {
+        isGood = true;
+    }
+
+    if (score > bestScore)
+    {
+        bestScore = score;
+    }
+
+    return isGood;
+
+}
 bool IsGoodItem(Property& prop)
 {
-    Statics_SpellWeaver_Amulet(prop);
-    return IsAddingMaximumMagic(prop);
+    Statics("Fanatic_Ring", prop);
+    //return IsAddingMaximumMagic(prop);
+    //return IsGoodSpellWeaverAmulet(prop);
+    //return IsGoodSpellWeaverRing(prop);
+    return IsGoodFanaticRing(prop);
 }
 
 void CScreenTranslateDlg::OnBnClickedButtonStart()
 {
+    //Property sp;
+    //ReadStatics(sp, "Statics_SpellWeaver_Amulet.txt");
+
     // TODO: Add your control notification handler code here
     POINT ptStep1 = { 350, 40 };
     POINT ptAnvil = { 125, 195 };
@@ -1123,6 +1267,9 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
     POINT ptFirstSlot = { 470, 325 };
     POINT ptSharedBox = { 400, 58 };
     POINT ptMenu = { 150, 600 };
+    POINT ptNewGame = { 320, 340 };
+    POINT ptCharacter = { 420, 410 };
+    POINT ptNormal = { 420, 380 };
 
     int bestMagic = 0;// 68;
 
@@ -1134,27 +1281,18 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
         MoveMouse(m_hwnd, ptMenu);
         LeftClick();
         NSleep(100);
-        KeyPress(VK_ESCAPE);
-        NSleep(100);
-        MoveMouse(m_hwnd, ptMenu);
+        MoveMouse(m_hwnd, ptNewGame);
         LeftClick();
+        NSleep(2000);
+        
+        MoveMouse(m_hwnd, ptCharacter);
+        LeftClick();
+        LeftClick();// click twice as the character is not pre-selected.
         NSleep(100);
-        KeyPress(VK_UP, true);
-        NSleep(100);
-        KeyPress(VK_UP, true);
-        NSleep(100);
-        KeyPress(VK_RETURN);
+        MoveMouse(m_hwnd, ptNormal);
+        LeftClick();
 
-        NSleep(5000);
-        KeyPress(VK_DOWN, true);
-        NSleep(100);
-        KeyPress(VK_DOWN, true);
-        NSleep(100);
-        KeyPress(VK_RETURN);
-        NSleep(100);
-        KeyPress(VK_RETURN);
-
-        NSleep(3000);
+        NSleep(2000);
         // restarted.
 
         m_restartRequired = false;
@@ -1174,7 +1312,7 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
         {
             MoveMouse(m_hwnd, ptCraftItem);
             LeftClick();
-            NSleep(100);
+            NSleep(10);
             MoveMouse(m_hwnd, ptHoverOnItem);
             NSleep(100);
             CaptureAnImage(m_hwnd, m_currentmatrix);   // current
@@ -1197,6 +1335,7 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
                     if (IsGoodItem(prop))
                     {
                         KeyEvent(VK_CONTROL, false);
+                        MoveMouse(m_hwnd, ptHoverOnItem);
                         LeftClick();
                         KeyEvent(VK_CONTROL, false, false);
                         NSleep(100);
