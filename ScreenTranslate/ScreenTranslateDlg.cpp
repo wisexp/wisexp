@@ -62,11 +62,14 @@ CScreenTranslateDlg::CScreenTranslateDlg(CWnd* pParent /*=NULL*/)
     m_lineIt = m_characters.end();
 }
 
+HWND m_hwnd;
+
 void CScreenTranslateDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_COMBO_PROGRAMLIST, m_programs);
     DDX_Control(pDX, IDC_EDIT_CHAR, m_char);
+    DDX_Control(pDX, IDC_EDIT1, m_cord);
 }
 
 BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
@@ -80,7 +83,39 @@ BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON_CONFIRM, &CScreenTranslateDlg::OnBnClickedButtonConfirm)
     ON_BN_CLICKED(IDC_BUTTON_SHOW_CHAR, &CScreenTranslateDlg::OnBnClickedButtonShowChar)
     ON_WM_TIMER()
+    ON_WM_KEYDOWN()
+    ON_BN_CLICKED(IDC_BUTTON_START, &CScreenTranslateDlg::OnBnClickedButtonStart)
 END_MESSAGE_MAP()
+
+
+BOOL CALLBACK WndEnumProc(HWND h, LPARAM p)
+{
+    CScreenTranslateDlg* pThis = reinterpret_cast<CScreenTranslateDlg*>(p);
+    DWORD proccess_ID;
+    DWORD exStyle = CWnd::FromHandle(h)->GetStyle();
+    DWORD requiredStyle = WS_VISIBLE;
+    if ((exStyle & requiredStyle) != requiredStyle)
+        return true;
+
+    GetWindowThreadProcessId(h, &proccess_ID);
+    if (proccess_ID == 7928)
+    {
+        int kkk = 0;
+    }
+    wchar_t buf[80];
+    GetWindowText(h, buf, 80);
+    int index = pThis->m_programs.GetCount();
+    pThis->m_programs.InsertString(index, buf);
+    pThis->m_programs.SetItemData(index, reinterpret_cast<DWORD_PTR>(h));
+
+    if (wcscmp(buf, L"Belzebub") == 0)
+    {
+        m_hwnd = h;
+    }
+
+    return TRUE;
+}
+
 
 
 // CScreenTranslateDlg message handlers
@@ -116,6 +151,8 @@ BOOL CScreenTranslateDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 
+    EnumWindows(WndEnumProc, (LPARAM)this);
+    
     
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -206,31 +243,6 @@ HCURSOR CScreenTranslateDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-BOOL CALLBACK WndEnumProc(HWND h, LPARAM p)
-{
-    CScreenTranslateDlg* pThis = reinterpret_cast<CScreenTranslateDlg*>(p);
-    DWORD proccess_ID;
-    DWORD exStyle = CWnd::FromHandle(h)->GetStyle();
-    DWORD requiredStyle = WS_VISIBLE;
-    if ((exStyle & requiredStyle) != requiredStyle)
-        return true;
-
-    GetWindowThreadProcessId(h, &proccess_ID);
-    if (proccess_ID == 7928)
-    {
-        int kkk = 0;
-    }
-    wchar_t buf[80];
-    GetWindowText(h, buf, 80);
-    int index = pThis->m_programs.GetCount();
-    pThis->m_programs.InsertString(index, buf);
-    pThis->m_programs.SetItemData(index, reinterpret_cast<DWORD_PTR>(h));
-    //std::wstring title(buf);
-    //pThis->m_processTitleMap.push_back(std::make_pair(proccess_ID, title));
-
-    return TRUE;
-}
 
 
 void CScreenTranslateDlg::OnBnClickedButtonRefresh()
@@ -705,6 +717,9 @@ void CScreenTranslateDlg::OnBnClickedButton2()
 {
     // TODO: Add your control notification handler code here
     //SetTimer(0, 5000, nullptr);
+
+
+
     int curSel = m_programs.GetCurSel();
     if (curSel != -1)
     {
@@ -744,7 +759,8 @@ void CScreenTranslateDlg::OnTimer(UINT_PTR nIDEvent)
 
     if (nIDEvent == 0)
     {
-        int curSel = m_programs.GetCurSel();
+        m_restartRequired = true;
+      /*  int curSel = m_programs.GetCurSel();
         if (curSel != -1)
         {
             HWND hwnd = reinterpret_cast<HWND>(m_programs.GetItemData(curSel));
@@ -769,6 +785,7 @@ void CScreenTranslateDlg::OnTimer(UINT_PTR nIDEvent)
             }
 
         }
+        */
     }
 }
 
@@ -805,34 +822,141 @@ void CScreenTranslateDlg::OnBnClickedButtonShowChar()
     ReleaseDC(pDC);
 }
 
+void MoveMouse(HWND hWnd, POINT pt)
+{
+    RECT rcWindow;
+    GetWindowRect(hWnd, &rcWindow);
+    long fScreenWidth = GetSystemMetrics(SM_CXSCREEN) - 1;
+    long fScreenHeight = GetSystemMetrics(SM_CYSCREEN) - 1;
+    pt.x += rcWindow.left;
+    pt.y += rcWindow.top;
+
+    // http://msdn.microsoft.com/en-us/library/ms646260(VS.85).aspx
+    // If MOUSEEVENTF_ABSOLUTE value is specified, dx and dy contain normalized absolute coordinates between 0 and 65,535.
+    // The event procedure maps these coordinates onto the display surface.
+    // Coordinate (0,0) maps onto the upper-left corner of the display surface, (65535,65535) maps onto the lower-right corner.
+    float fx = pt.x * (65535.0f / fScreenWidth);
+    float fy = pt.y * (65535.0f / fScreenHeight);
+    INPUT input = { 0 };
+    input.type = INPUT_MOUSE;
+    input.mi.dwFlags = MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE;
+    input.mi.dx = fx;
+    input.mi.dy = fy;
+
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void LeftClick()
+{
+    INPUT input = { 0 };
+
+    input.type = INPUT_MOUSE;
+    input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+    SendInput(1, &input, sizeof(INPUT));
+
+    input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+
+
+void KeyEvent(WORD key, bool isExt, bool isDown = true)
+{
+    INPUT input = { 0 };
+
+    input.type = INPUT_KEYBOARD;
+    input.ki.dwFlags = isDown ? 0 //keydown 
+        : KEYEVENTF_KEYUP;
+    input.ki.wVk = key;
+    input.ki.wScan = MapVirtualKey(key, MAPVK_VK_TO_VSC);
+    if (isExt)
+        input.ki.dwFlags += KEYEVENTF_EXTENDEDKEY;
+    ::BringWindowToTop(m_hwnd);
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void KeyPress(WORD key, bool ext = false)
+{
+    KeyEvent(key, ext);
+    Sleep(100);
+    KeyEvent(key, ext, false);
+}
+
 
 void CScreenTranslateDlg::OnBnClickedButtonNext()
 {
     // TODO: Add your control notification handler code here
+    wchar_t cord[100];
+    m_cord.GetWindowText(cord, 99);
     
-    m_charIt++;
-    if (m_charIt == m_lineIt->end())
-    {
-        m_lineIt++;
-        if (m_lineIt == m_characters.end())
-        {
-            m_lineIt = m_characters.begin();
-        }
-        m_charIt = m_lineIt->begin();
-    }
-    OnBnClickedButtonShowChar();
+    POINT pt;
+
+    swscanf_s(cord, L"%d,%d", &pt.x, &pt.y);
+    MoveMouse(m_hwnd, pt);
+    //LeftClick();
+    
+    //m_charIt++;
+    //if (m_charIt == m_lineIt->end())
+    //{
+    //    m_lineIt++;
+    //    if (m_lineIt == m_characters.end())
+    //    {
+    //        m_lineIt = m_characters.begin();
+    //    }
+    //    m_charIt = m_lineIt->begin();
+    //}
+    //OnBnClickedButtonShowChar();
 }
 
 
 void CScreenTranslateDlg::OnBnClickedButtonConfirm()
 {
     // TODO: Add your control notification handler code here
-    wchar_t str[100] = L"";
+    //::SendMessage(m_hwnd, WM_KEYDOWN, (WPARAM)'A', 0x001e0001);
+    //::SendMessage(m_hwnd, WM_KEYUP, (WPARAM)'A', 0x001e0001);
+    //return;
+    NSleep(1000);
+    wchar_t cord[100];
+    m_cord.GetWindowText(cord, 99);
+
+    POINT pt;
+
+    swscanf_s(cord, L"%d,%d", &pt.x, &pt.y);
+    MoveMouse(m_hwnd, pt);
+    KeyEvent(VK_CONTROL, false);
+    LeftClick();
+    KeyEvent(VK_CONTROL, false, false);
+    return;
+    
+    NSleep(1000);
+
+    KeyPress(VK_ESCAPE);
+    NSleep(100);
+    KeyPress(VK_ESCAPE);
+    NSleep(100);
+    KeyPress(VK_ESCAPE);
+    NSleep(100);
+    KeyPress(VK_UP, true);
+    NSleep(100);
+    KeyPress(VK_UP, true);
+    NSleep(100);
+    KeyPress(VK_RETURN);
+
+    NSleep(4000);
+    KeyPress(VK_DOWN, true);
+    NSleep(100);
+    KeyPress(VK_DOWN, true);
+    NSleep(100);
+    KeyPress(VK_RETURN);
+    NSleep(100);
+    KeyPress(VK_RETURN);
+
+   /* wchar_t str[100] = L"";
     m_char.GetWindowText(str, 100);
     if (str[0] != 0 && str[0] != L' ' && !m_charIt->empty())
     {
         SaveCharacter(*m_charIt, str[0]);
-    }
+    }*/
 }
 
 
@@ -900,7 +1024,186 @@ void CScreenTranslateDlg::SaveCharacter(std::vector<std::pair<int, int>>& charac
 }
 
 
+void CScreenTranslateDlg::NSleep(DWORD t)
+{
+    
+    HANDLE h[1];
+    h[0] = m_hWnd;
+    auto ret = MsgWaitForMultipleObjects(1, h, true, t, QS_ALLEVENTS);
+
+    if (ret == WAIT_OBJECT_0 + 1)
+    {
+        MSG msg;
+        while (::PeekMessage(&msg, m_hWnd, 0, 0, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+        }
+    }
+
+}
 
 
 
 
+
+
+void CScreenTranslateDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+    // TODO: Add your message handler code here and/or call default
+
+    CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
+}
+
+void Statics_SpellWeaver_Amulet(const Property& prop)
+{
+    static Property sp;
+    auto it = sp.m_properties.begin();
+    auto cit = prop.m_properties.begin();
+    bool updated = false;
+    for (; cit != prop.m_properties.end(); ++cit, ++it)
+    {
+        if (it->second < cit->second)
+        {
+            it->second = cit->second;
+            updated = true;
+        }
+    }
+
+    if (updated)
+    {
+        TRACE(L"================== BEST PROPERTY ==================\r\n");
+        for (auto it : sp.m_properties)
+        {
+            TRACE(L"BEST PROPERTY: %s: %d\r\n", it.first.c_str(), it.second.second);
+        }
+        TRACE(L"================== BEST PROPERTY ==================\r\n");
+    }
+}
+
+bool IsAddingMaximumMagic(Property& prop)
+{
+    static int bestMagic = 60;
+    auto magic = prop.m_properties[L"Magic"].second;
+    if (magic > bestMagic)
+    {
+        bestMagic = magic;
+        return true;
+    }
+    return false;
+}
+
+
+bool IsGoodItem(Property& prop)
+{
+    Statics_SpellWeaver_Amulet(prop);
+    return IsAddingMaximumMagic(prop);
+}
+
+void CScreenTranslateDlg::OnBnClickedButtonStart()
+{
+    // TODO: Add your control notification handler code here
+    POINT ptStep1 = { 350, 40 };
+    POINT ptAnvil = { 125, 195 };
+    POINT ptCraftButton = { 120, 420 };
+    POINT ptCraftItem = { 140, 200 };
+    POINT ptHoverOnItem = { 110, 200 };
+    POINT ptFirstSlot = { 470, 325 };
+    POINT ptSharedBox = { 400, 58 };
+    POINT ptMenu = { 150, 600 };
+
+    int bestMagic = 0;// 68;
+
+    do
+    {
+        // restart
+        ::BringWindowToTop(m_hwnd);
+        NSleep(100);
+        MoveMouse(m_hwnd, ptMenu);
+        LeftClick();
+        NSleep(100);
+        KeyPress(VK_ESCAPE);
+        NSleep(100);
+        MoveMouse(m_hwnd, ptMenu);
+        LeftClick();
+        NSleep(100);
+        KeyPress(VK_UP, true);
+        NSleep(100);
+        KeyPress(VK_UP, true);
+        NSleep(100);
+        KeyPress(VK_RETURN);
+
+        NSleep(5000);
+        KeyPress(VK_DOWN, true);
+        NSleep(100);
+        KeyPress(VK_DOWN, true);
+        NSleep(100);
+        KeyPress(VK_RETURN);
+        NSleep(100);
+        KeyPress(VK_RETURN);
+
+        NSleep(3000);
+        // restarted.
+
+        m_restartRequired = false;
+
+        MoveMouse(m_hwnd, ptStep1);
+        LeftClick();
+        NSleep(3000);
+        MoveMouse(m_hwnd, ptAnvil);
+        LeftClick();
+        NSleep(2000);
+        MoveMouse(m_hwnd, ptCraftButton);
+        LeftClick();
+        NSleep(100);
+        CaptureAnImage(m_hwnd, m_lastmatrix);   // baseline
+
+        do
+        {
+            MoveMouse(m_hwnd, ptCraftItem);
+            LeftClick();
+            NSleep(100);
+            MoveMouse(m_hwnd, ptHoverOnItem);
+            NSleep(100);
+            CaptureAnImage(m_hwnd, m_currentmatrix);   // current
+
+            if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
+            {
+                auto& baseline = m_lastmatrix;
+                auto& current = m_currentmatrix;
+                auto result = Parse(baseline, current);
+
+                if (m_lastParsedText != result)
+                {
+                    m_lastParsedText = result;
+                    Property prop;
+                    prop.Parse(result);
+
+                    KillTimer(0);
+                    SetTimer(0, 100000, nullptr);
+
+                    if (IsGoodItem(prop))
+                    {
+                        KeyEvent(VK_CONTROL, false);
+                        LeftClick();
+                        KeyEvent(VK_CONTROL, false, false);
+                        NSleep(100);
+                        MoveMouse(m_hwnd, ptSharedBox);
+                        LeftClick();
+                        NSleep(2000);
+                        MoveMouse(m_hwnd, ptFirstSlot);
+                        KeyEvent(VK_CONTROL, false);
+                        LeftClick();
+                        KeyEvent(VK_CONTROL, false, false);
+                        break; // restart
+                    }
+                }
+                else
+                {
+                    break; // restart
+                }
+            }
+        } while (!m_restartRequired);
+
+    } while (true);
+}

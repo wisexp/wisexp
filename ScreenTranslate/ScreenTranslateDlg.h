@@ -42,6 +42,8 @@ public:
     afx_msg void OnBnClickedButton2();
 
     
+    void NSleep(DWORD t);
+
     bool ReadCharacter(std::vector<std::pair<int, int>>& character, wchar_t& c);
     void SaveCharacter(std::vector<std::pair<int, int>>& character, wchar_t c);
     void LoadCharMap();
@@ -64,9 +66,13 @@ public:
         int operator()(const Char_T& character);
     };
     std::unordered_map<Char_T, wchar_t, Char_Hash> m_charmap;
-    
+    bool m_restartRequired;
     CEdit m_char;
     afx_msg void OnBnClickedButtonShowChar();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    CEdit m_cord;
+    
+    afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+    afx_msg void OnBnClickedButtonStart();
 };
 

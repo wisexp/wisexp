@@ -19,7 +19,7 @@ struct Property
     
     Property()
     {
-        DECLAR_PROPERTY(Magic, L"\\+(\\d+)TOMAG1C")
+            DECLAR_PROPERTY(Magic, L"\\+(\\d+)TOMAG1C")
             DECLAR_PROPERTY(Strength, L"\\+(\\d+)TOSTRENGTH")
             DECLAR_PROPERTY(Dexterity, L"\\+(\\d+)TODEXTER1TY")
             DECLAR_PROPERTY(Vitality, L"\\+(\\d+)TOV1TAL1TY")
@@ -65,6 +65,17 @@ struct Property
                 }
             }
         }
+        int toAll = m_properties[L"AllAttributes"].second;
+        m_properties[L"Strength"].second += toAll;
+        m_properties[L"Dexterity"].second += toAll;
+        m_properties[L"Vitality"].second += toAll;
+        m_properties[L"Magic"].second += toAll;
+
+        toAll = m_properties[L"ResistAll"].second;
+        m_properties[L"ResistCold"].second += toAll;
+        m_properties[L"ResistFire"].second += toAll;
+        m_properties[L"ResistMagic"].second += toAll;
+        m_properties[L"ResistLightning"].second += toAll;
         TRACE(L"======================\r\n");
 
         
