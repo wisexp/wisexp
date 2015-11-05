@@ -1220,18 +1220,21 @@ bool IsGoodFanaticRing(Property& prop)
         return false;
 
     auto v1 = prop.m_properties[L"AllAttributes"].second;
-    if (v1 > 15) score += (v1 - 15) * 2;
+    if (v1 > 15) score += (v1 - 15) * 4;
     auto v3 = prop.m_properties[L"Dexterity"].second;
-    if (v3 > 50) score += v3 - 50;
+    if (v3 > 40) score += (v3 - 40)*2;
     auto v4 = prop.m_properties[L"Strength"].second;
-    if (v4 > 20) score += v4 - 20;
+    if (v4 > 40) score += (v4 - 40)*2;
     auto v5 = prop.m_properties[L"ResistAll"].second;
-    if (v5 > 30) score += (v5 - 30) * 2;
+    if (v5 > 20) score += (v5 - 20) * 2;
     auto v6 = prop.m_properties[L"StealMana"].second;
-    if (v6 > 4) score += (v6 - 4) * 10;
+    if (v6 > 4) score += (v6 - 4) * 30;
+    auto v7 = prop.m_properties[L"CriticalHitDamage"].second;
+    score += v7;
+
 
     bool isGood = false;
-    if (score > bestScore * 9 / 10)
+    if (score > bestScore * 4 / 5)
     {
         isGood = true;
     }
