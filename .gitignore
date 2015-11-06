@@ -14,5 +14,8 @@ ScreenTranslate/ScreenTranslate.sdf
 ScreenTranslate/Debug/ScreenTranslate.Build.CppClean.log
 ScreenTranslate/ScreenTranslate.v12.suo
 ScreenTranslate/ScreenTranslate.v12.suo
-ScreenTranslate/ipch/screentranslate-f3f2b03f/screentranslate-c70d2dba.ipch
+ScreenTranslate/ipch/*
 ScreenTranslate/ScreenTranslate.aps
+ScreenTranslate/Release/ScreenTranslate.res
+ScreenTranslate/Release/ScreenTranslate.log
+
