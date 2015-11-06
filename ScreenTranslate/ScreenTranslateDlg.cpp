@@ -1245,15 +1245,53 @@ bool IsGoodFanaticRing(Property& prop)
     }
 
     return isGood;
-
 }
+
+
+bool IsGoodFanaticBelt(Property& prop)
+{
+    static int bestScore = 10;
+    int score = 0;
+
+    if (prop.m_properties[L"MaxResistAll"].second < 3)
+        return false;
+
+    auto v1 = prop.m_properties[L"AllAttributes"].second;
+    if (v1 > 5) score += (v1 - 5) * 40;
+    auto v3 = prop.m_properties[L"Dexterity"].second;
+    if (v3 > 40) score += (v3 - 40) * 2;
+    auto v4 = prop.m_properties[L"Strength"].second;
+    if (v4 > 30) score += (v4 - 30) * 2;
+    auto v5 = prop.m_properties[L"ResistAll"].second;
+    if (v5 > 20) score += (v5 - 20) * 2;
+    auto v6 = prop.m_properties[L"Mana"].second;
+    if (v6 > 80) score += (v6 - 80);
+    auto v7 = prop.m_properties[L"HitPoints"].second;
+    if (v7 > 80) score += v7 - 80;
+
+
+    bool isGood = false;
+    if (score > bestScore * 4 / 5)
+    {
+        isGood = true;
+    }
+
+    if (score > bestScore)
+    {
+        bestScore = score;
+    }
+
+    return isGood;
+}
+
 bool IsGoodItem(Property& prop)
 {
-    Statics("Fanatic_Ring", prop);
+    Statics("Fanatic_Belt", prop);
     //return IsAddingMaximumMagic(prop);
     //return IsGoodSpellWeaverAmulet(prop);
     //return IsGoodSpellWeaverRing(prop);
-    return IsGoodFanaticRing(prop);
+    //return IsGoodFanaticRing(prop);
+    return IsGoodFanaticBelt(prop);
 }
 
 void CScreenTranslateDlg::OnBnClickedButtonStart()
