@@ -1,3 +1,5 @@
+AddDamage:	0
+AddElementDamage:	0
 AllAttributes:	20
 CriticalHitDamage:	32
 Dexterity:	59
@@ -7,6 +9,7 @@ Golem:	0
 Guardian:	0
 HitPoints:	70
 IAS:	0
+IAS2:	0
 Magic:	40
 Mana:	98
 MaxResistAll:	3
@@ -16,7 +19,7 @@ ResistCold:	69
 ResistFire:	87
 ResistLightning:	96
 ResistMagic:	78
-Spell:	0
+Spell:	2
 StealLife:	6
 StealMana:	6
 Strength:	59

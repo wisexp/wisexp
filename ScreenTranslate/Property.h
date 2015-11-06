@@ -30,7 +30,8 @@ struct Property
             DECLAR_PROPERTY(ResistLightning, L"RES1STL1GHTN1NG:\\+(\\d+)%")
             DECLAR_PROPERTY(ResistAll, L"RES1STALL:\\+(\\d+)%")
             DECLAR_PROPERTY(MaxResistAll, L"MAX1MUMRES1STALL:\\+(\\d+)%")
-            DECLAR_PROPERTY(IAS, L"\\+(\\d+)%1NCREASEDATTACKSPEED")
+            DECLAR_PROPERTY(IAS, L"\\+(\\d+)%1NCREASEDATTACKSP.*")
+            DECLAR_PROPERTY(IAS2, L"ATTACKSPEED:\\+(\\d+)%")
             DECLAR_PROPERTY(CriticalHitDamage, L"CR1T1CALH1TDAMAGE:\\+(\\d+)%")
             DECLAR_PROPERTY(StealLife, L"H1TSTEALS(\\d+)%L1FE")
             DECLAR_PROPERTY(StealMana, L"H1TSTEALS(\\d+)%MANA")
@@ -42,6 +43,8 @@ struct Property
             DECLAR_PROPERTY(Golem, L"\\+(\\d+)TOGOLEMSPELL")
             DECLAR_PROPERTY(Guardian, L"\\+(\\d+)TOGUARD1ANSPELL")
             DECLAR_PROPERTY(Spell, L"SPELLSARE1NCREASED(\\d+)LEVELS?")
+            DECLAR_PROPERTY(AddDamage, L"ADDS(\\d+)PO1NTSTODAMAG.*")
+            DECLAR_PROPERTY(AddElementDamage, L"ADDS\\d+TO(\\d+).*DAMAG.*")
     }
 
     void Parse(const std::vector<std::wstring>& lines)
@@ -61,7 +64,7 @@ struct Property
                     std::wstring ws(sm[1].first, sm[1].second);
                     std::wstringstream ss(ws);
                     ss >> value;
-                    p.second.second = value;
+                    p.second.second += value;
                     TRACE(L"%s: %d\r\n", p.first.c_str(), p.second.second);
                     break;
                 }
@@ -78,6 +81,9 @@ struct Property
         m_properties[L"ResistFire"].second += toAll;
         m_properties[L"ResistMagic"].second += toAll;
         m_properties[L"ResistLightning"].second += toAll;
+
+        m_properties[L"IAS"].second += m_properties[L"IAS2"].second;
+        m_properties[L"AddDamage"].second += m_properties[L"AddElementDamage"].second;
         TRACE(L"======================\r\n");
 
         

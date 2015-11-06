@@ -74,5 +74,18 @@ public:
     
     afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
     afx_msg void OnBnClickedButtonStart();
+    afx_msg void OnBnClickedButtonStart2();
+    afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
+
+    enum State
+    {
+        Running,
+        Stopping,
+        Stopped
+    };
+
+    State m_state;
+
+    CButton m_startButton;
 };
 

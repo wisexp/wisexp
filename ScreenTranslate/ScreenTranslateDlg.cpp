@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <list>
 #include <fstream>
+#include <assert.h>
 #include "Property.h"
 using namespace std;
 #ifdef _DEBUG
@@ -70,6 +71,7 @@ void CScreenTranslateDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_COMBO_PROGRAMLIST, m_programs);
     DDX_Control(pDX, IDC_EDIT_CHAR, m_char);
     DDX_Control(pDX, IDC_EDIT1, m_cord);
+    DDX_Control(pDX, IDC_BUTTON_START, m_startButton);
 }
 
 BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
@@ -85,6 +87,8 @@ BEGIN_MESSAGE_MAP(CScreenTranslateDlg, CDialogEx)
     ON_WM_TIMER()
     ON_WM_KEYDOWN()
     ON_BN_CLICKED(IDC_BUTTON_START, &CScreenTranslateDlg::OnBnClickedButtonStart)
+    ON_BN_CLICKED(IDC_BUTTON_START2, &CScreenTranslateDlg::OnBnClickedButtonStart2)
+    ON_WM_HOTKEY()
 END_MESSAGE_MAP()
 
 
@@ -153,7 +157,13 @@ BOOL CScreenTranslateDlg::OnInitDialog()
 
     EnumWindows(WndEnumProc, (LPARAM)this);
     
+    RegisterHotKey(
+        m_hWnd,
+        1,
+        MOD_CONTROL,
+        'S');
     
+    m_state = State::Stopped;
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -1026,25 +1036,27 @@ void CScreenTranslateDlg::SaveCharacter(std::vector<std::pair<int, int>>& charac
 
 void CScreenTranslateDlg::NSleep(DWORD t)
 {
-    
-    Sleep(t);
-    return;
-
-    HANDLE h[1];
-    h[0] = m_hWnd;
-
-    auto ret = MsgWaitForMultipleObjects(0, nullptr, true, t, QS_ALLEVENTS);
-
-    if (ret == WAIT_OBJECT_0)
+    auto start = GetTickCount();
+    auto end = start + t;
+    while (true)
     {
-        MSG msg;
-        while (::PeekMessage(&msg, m_hWnd, 0, 0, PM_REMOVE))
-        {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-        }
-    }
 
+        auto ret = MsgWaitForMultipleObjects(0, nullptr, true, t, QS_ALLEVENTS);
+
+        if (ret == WAIT_OBJECT_0)
+        {
+            MSG msg;
+            while (::PeekMessage(&msg, m_hWnd, 0, 0, PM_REMOVE))
+            {
+                ::TranslateMessage(&msg);
+                ::DispatchMessage(&msg);
+            }
+        }
+        auto current = GetTickCount();
+        if (end <= current)
+            break;
+        t = end - current;
+    }
 }
 
 
@@ -1258,8 +1270,22 @@ bool IsGoodItem(Property& prop)
 
 void CScreenTranslateDlg::OnBnClickedButtonStart()
 {
-    //Property sp;
-    //ReadStatics(sp, "Statics_SpellWeaver_Amulet.txt");
+    if (m_state == State::Running)
+    {
+        m_state = State::Stopping;
+        m_startButton.SetWindowText(L"Stopping...");
+        return;
+    }
+    else if (m_state == State::Stopping)
+    {
+        // do nothing.
+        return;
+    }
+    else if (m_state == State::Stopped)
+    {
+        m_state = State::Running;
+        m_startButton.SetWindowText(L"Running...");
+    }
 
     // TODO: Add your control notification handler code here
     POINT ptStep1 = { 350, 40 };
@@ -1357,7 +1383,53 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
                     break; // restart
                 }
             }
-        } while (!m_restartRequired);
+        } while (!m_restartRequired && m_state == State::Running);
 
-    } while (true);
+    } while (m_state == State::Running);
+
+    assert(m_state == State::Stopping);
+
+    if (m_state == State::Stopping)
+    {
+        m_state = State::Stopped;
+        m_startButton.SetWindowText(L"Stopped.");
+    }
+}
+
+
+void CScreenTranslateDlg::OnBnClickedButtonStart2()
+{
+    
+    // TODO: Add your control notification handler code here
+    CaptureAnImage(m_hwnd, m_lastmatrix);   // baseline
+    POINT ptHoverOnItem = { 110, 200 };
+    MoveMouse(m_hwnd, ptHoverOnItem);
+    NSleep(100);
+    CaptureAnImage(m_hwnd, m_currentmatrix);   // current
+
+    if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
+    {
+        auto& baseline = m_lastmatrix;
+        auto& current = m_currentmatrix;
+        auto result = Parse(baseline, current);
+
+        if (m_lastParsedText != result)
+        {
+            m_lastParsedText = result;
+            Property prop;
+            prop.Parse(result);
+
+            int k = 0;
+        }
+    }
+
+}
+
+
+void CScreenTranslateDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
+{
+    // TODO: Add your message handler code here and/or call default
+
+    CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
+    OnBnClickedButtonStart();
 }
