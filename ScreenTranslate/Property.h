@@ -4,6 +4,7 @@
 #include <map>
 #include <regex>
 #include <sstream>
+#include <fstream>
 
 
 
@@ -16,10 +17,30 @@ struct Property
 
 
     std::map<std::wstring, std::pair<std::wstring, int>> m_properties;
+
+    static const std::vector<std::wstring>& KnownUnmatchedPattern()
+    {
+        static std::vector<std::wstring> pattern;
+        static bool initialized = false;
+
+        if (!initialized)
+        {
+            initialized = true;
+            std::wifstream ifs("knownUnmatchedPattern.txt");
+            do
+            {
+                wchar_t buf[1024];
+                ifs.getline(buf, 1024);
+                pattern.push_back(std::wstring(buf));
+            } while (ifs.good());
+            ifs.close();
+        }
+        return pattern;
+    }
     
     Property()
     {
-            DECLAR_PROPERTY(Magic, L"\\+(\\d+)TOMAG1C")
+        DECLAR_PROPERTY(Magic, L"\\+(\\d+)TOMAG1C")
             DECLAR_PROPERTY(Strength, L"\\+(\\d+)TOSTRENGTH")
             DECLAR_PROPERTY(Dexterity, L"\\+(\\d+)TODEXTER1TY")
             DECLAR_PROPERTY(Vitality, L"\\+(\\d+)TOV1TAL1TY")
@@ -45,6 +66,7 @@ struct Property
             DECLAR_PROPERTY(Spell, L"SPELLSARE1NCREASED(\\d+)LEVELS?")
             DECLAR_PROPERTY(AddDamage, L"ADDS(\\d+)PO1NTSTODAMAG.*")
             DECLAR_PROPERTY(AddElementDamage, L"ADDS\\d+TO(\\d+).*DAMAG.*")
+            DECLAR_PROPERTY(MF, L"\\+(\\d+)%CHANCEOFGETT1NGMAG1C1TEMS")
     }
 
     void Parse(const std::vector<std::wstring>& lines)
@@ -54,6 +76,8 @@ struct Property
         {
             std::wsmatch sm;
             const std::wstring& src = l;
+            if (l.size() < 6) continue;
+            bool matched = false;
             for (auto& p : m_properties)
             {
                 int value = 0;
@@ -66,7 +90,28 @@ struct Property
                     ss >> value;
                     p.second.second += value;
                     TRACE(L"%s: %d\r\n", p.first.c_str(), p.second.second);
+                    matched = true;
                     break;
+                }
+            }
+
+            if (!matched)
+            {
+                bool known = false;
+                for (const auto& p : KnownUnmatchedPattern())
+                {
+                    auto pattern = std::wregex(p.c_str());
+                    if (std::regex_match(l, pattern))
+                    {
+                        known = true;
+                        break;
+                    }
+                }
+                if (!known)
+                {
+                    std::wofstream ofs("unmatched.txt", std::ofstream::app);
+                    ofs << l << std::endl;
+                    ofs.close();
                 }
             }
         }

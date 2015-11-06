@@ -281,7 +281,15 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& matrix)
 
     if (!hdcMemDC)
     {
-        MessageBox(hWnd, L"CreateCompatibleDC has failed", L"Failed", MB_OK);
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleDC has failed==========================================\r\n");
         goto done;
     }
 
@@ -316,7 +324,15 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& matrix)
 
     if (!hbmScreen)
     {
-        MessageBox(hWnd, L"CreateCompatibleBitmap Failed", L"Failed", MB_OK);
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nCreateCompatibleBitmap has failed==========================================\r\n");
         goto done;
     }
 
@@ -331,7 +347,15 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& matrix)
         rcWindow.left , rcWindow.top ,
         SRCCOPY))
     {
-        MessageBox(hWnd, L"BitBlt has failed", L"Failed", MB_OK);
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
+        TRACE(L"==========================================\r\nBitBlt has failed==========================================\r\n");
         goto done;
     }
     
@@ -430,7 +454,7 @@ int CaptureAnImage(HWND hWnd, std::vector<std::vector<COLORREF>>& matrix)
 done:
     DeleteObject(hbmScreen);
     DeleteObject(hdcMemDC);
-    //ReleaseDC(NULL, hdcScreen);
+    ReleaseDC(NULL, hdcScreen);
     ReleaseDC(hWnd, hdcWindow);
 
     return 0;
@@ -1225,38 +1249,27 @@ bool IsGoodSpellWeaverRing(Property& prop)
 }
 bool IsGoodFanaticRing(Property& prop)
 {
-    static int bestScore = 10;
+    static int bestScore = 30;
     int score = 0;
 
-    if (prop.m_properties[L"MaxResistAll"].second < 3)
+    if (prop.m_properties[L"MF"].second < 20)
         return false;
 
     auto v1 = prop.m_properties[L"AllAttributes"].second;
-    if (v1 > 15) score += (v1 - 15) * 4;
+    if (v1 > 15) score += 1;
     auto v3 = prop.m_properties[L"Dexterity"].second;
-    if (v3 > 40) score += (v3 - 40)*2;
+    if (v3 > 50) score += 1;
     auto v4 = prop.m_properties[L"Strength"].second;
-    if (v4 > 40) score += (v4 - 40)*2;
+    if (v4 > 40) score += 1;
     auto v5 = prop.m_properties[L"ResistAll"].second;
-    if (v5 > 20) score += (v5 - 20) * 2;
+    if (v5 > 20) score += 1;
     auto v6 = prop.m_properties[L"StealMana"].second;
-    if (v6 > 4) score += (v6 - 4) * 30;
+    if (v6 > 4) score += 1;
     auto v7 = prop.m_properties[L"CriticalHitDamage"].second;
-    score += v7;
+    if (v7 > 20) score += 1;
 
 
-    bool isGood = false;
-    if (score > bestScore * 4 / 5)
-    {
-        isGood = true;
-    }
-
-    if (score > bestScore)
-    {
-        bestScore = score;
-    }
-
-    return isGood;
+    return score >= 5;
 }
 
 
@@ -1332,15 +1345,44 @@ bool IsGoodHarBingerBow(Property& prop)
 
     return isGood;
 }
+
+bool IsGoodConquerorRing(Property& prop)
+{
+    static int bestScore = 30;
+    int score = 0;
+
+    if (prop.m_properties[L"MF"].second < 20)
+        return false;
+
+    auto v1 = prop.m_properties[L"AllAttributes"].second;
+    if (v1 > 15) score += 1;
+    //auto v3 = prop.m_properties[L"Dexterity"].second;
+    //if (v3 > 50) score += 1;
+    auto v4 = prop.m_properties[L"Strength"].second;
+    if (v4 > 40) score += 1;
+    auto v5 = prop.m_properties[L"ResistAll"].second;
+    if (v5 > 20) score += 1;
+    auto v6 = prop.m_properties[L"StealMana"].second;
+    if (v6 > 4) score += 1;
+    auto v7 = prop.m_properties[L"CriticalHitDamage"].second;
+    if (v7 > 20) score += 1;
+
+
+    return score >= 4;
+}
 bool IsGoodItem(Property& prop)
 {
-    Statics("HarBinger_Bow", prop);
+    
     //return IsAddingMaximumMagic(prop);
     //return IsGoodSpellWeaverAmulet(prop);
     //return IsGoodSpellWeaverRing(prop);
+    //Statics("Fanatic_Ring", prop);
     //return IsGoodFanaticRing(prop);
     //return IsGoodFanaticBelt(prop);
-    return IsGoodHarBingerBow(prop);
+    //Statics("HarBinger_Bow", prop);
+    //return IsGoodHarBingerBow(prop);
+    Statics("Conqueror_Ring", prop);
+    return IsGoodConquerorRing(prop);
 }
 
 void CScreenTranslateDlg::OnBnClickedButtonStart()
@@ -1382,45 +1424,53 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
         // restart
         ::BringWindowToTop(m_hwnd);
         NSleep(100);
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptMenu);
         LeftClick();
         NSleep(100);
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptNewGame);
         LeftClick();
         NSleep(2000);
-        
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptCharacter);
         LeftClick();
         LeftClick();// click twice as the character is not pre-selected.
         NSleep(100);
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptNormal);
         LeftClick();
 
         NSleep(2000);
         // restarted.
-
+        if (m_state == State::Stopping) break;
         m_restartRequired = false;
 
         MoveMouse(m_hwnd, ptStep1);
         LeftClick();
         NSleep(3000);
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptAnvil);
         LeftClick();
         NSleep(2000);
+        if (m_state == State::Stopping) break;
         MoveMouse(m_hwnd, ptCraftButton);
         LeftClick();
         NSleep(100);
+        if (m_state == State::Stopping) break;
         CaptureAnImage(m_hwnd, m_lastmatrix);   // baseline
 
         do
         {
+            if (m_state == State::Stopping) break;
             MoveMouse(m_hwnd, ptCraftItem);
             LeftClick();
             NSleep(10);
+            if (m_state == State::Stopping) break;
             MoveMouse(m_hwnd, ptHoverOnItem);
             NSleep(100);
             CaptureAnImage(m_hwnd, m_currentmatrix);   // current
-
+            if (m_state == State::Stopping) break;
             if (m_lastmatrix.size() != 0 && m_currentmatrix.size() == m_lastmatrix.size() && m_lastmatrix[0].size() == m_currentmatrix[0].size())
             {
                 auto& baseline = m_lastmatrix;
@@ -1438,6 +1488,7 @@ void CScreenTranslateDlg::OnBnClickedButtonStart()
 
                     if (IsGoodItem(prop))
                     {
+                        if (m_state == State::Stopping) break;
                         KeyEvent(VK_CONTROL, false);
                         MoveMouse(m_hwnd, ptHoverOnItem);
                         LeftClick();

@@ -15,7 +15,7 @@ Mana:	0
 MaxResistAll:	0
 MeteorCluster:	0
 ResistAll:	50
-ResistCold:	105
+ResistCold:	107
 ResistFire:	105
 ResistLightning:	105
 ResistMagic:	109
