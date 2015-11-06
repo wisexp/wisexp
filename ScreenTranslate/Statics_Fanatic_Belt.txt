@@ -1,12 +1,15 @@
+AddDamage:	174
+AddElementDamage:	156
 AllAttributes:	7
-CriticalHitDamage:	0
+CriticalHitDamage:	41
 Dexterity:	56
 EnhancedArmor:	170
-EnhancedDamage:	0
+EnhancedDamage:	98
 Golem:	0
 Guardian:	0
 HitPoints:	150
 IAS:	0
+IAS2:	0
 Magic:	22
 Mana:	150
 MaxResistAll:	3

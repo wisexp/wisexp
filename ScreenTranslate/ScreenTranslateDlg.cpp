@@ -160,7 +160,7 @@ BOOL CScreenTranslateDlg::OnInitDialog()
     RegisterHotKey(
         m_hWnd,
         1,
-        MOD_CONTROL,
+        MOD_CONTROL|MOD_ALT,
         'S');
     
     m_state = State::Stopped;
@@ -1296,14 +1296,51 @@ bool IsGoodFanaticBelt(Property& prop)
     return isGood;
 }
 
+bool IsGoodHarBingerBow(Property& prop)
+{
+    static int bestScore = 100;
+    int score = 0;
+    auto v2 = prop.m_properties[L"EnhancedDamage"].second;
+    if (v2 > 200)
+    {
+        int k = 0;
+    }
+
+    auto v1 = prop.m_properties[L"IAS"].second;
+    if (v1 < 30) return false;
+    
+
+    if (v2 > 150) score += v2 - 150;
+    auto v4 = prop.m_properties[L"AddDamage"].second;
+    score += v4 * 2;
+    auto v5 = prop.m_properties[L"AddElementDamage"].second;
+    if (v5 > 80) score += (v5 - 80) / 2;
+
+    auto v6 = prop.m_properties[L"CriticalHitDamage"].second;
+    score += v6*2;
+
+    bool isGood = false;
+    if (score > bestScore * 4 / 5)
+    {
+        isGood = true;
+    }
+
+    if (score > bestScore)
+    {
+        bestScore = score;
+    }
+
+    return isGood;
+}
 bool IsGoodItem(Property& prop)
 {
-    Statics("Fanatic_Belt", prop);
+    Statics("HarBinger_Bow", prop);
     //return IsAddingMaximumMagic(prop);
     //return IsGoodSpellWeaverAmulet(prop);
     //return IsGoodSpellWeaverRing(prop);
     //return IsGoodFanaticRing(prop);
-    return IsGoodFanaticBelt(prop);
+    //return IsGoodFanaticBelt(prop);
+    return IsGoodHarBingerBow(prop);
 }
 
 void CScreenTranslateDlg::OnBnClickedButtonStart()

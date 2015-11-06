@@ -83,7 +83,7 @@ struct Property
         m_properties[L"ResistLightning"].second += toAll;
 
         m_properties[L"IAS"].second += m_properties[L"IAS2"].second;
-        m_properties[L"AddDamage"].second += m_properties[L"AddElementDamage"].second;
+        //m_properties[L"AddDamage"].second += m_properties[L"AddElementDamage"].second;
         TRACE(L"======================\r\n");
 
         
